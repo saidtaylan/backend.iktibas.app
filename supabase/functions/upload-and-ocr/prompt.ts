@@ -13,5 +13,4 @@ Formatting and line breaks:
 - If a word is split at the end of a line with a hyphen (including soft hyphen), join it back into a single word.
 - If the text contains bullet/numbered lists, keep one item per line.
 - Return plain text only (no markdown unless present in the source).
-
 `;

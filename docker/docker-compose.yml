@@ -8,7 +8,6 @@
 name: supabase
 
 services:
-
   # Nginx reverse proxy with SSL/TLS support
   nginx:
     container_name: supabase-nginx
@@ -16,37 +15,34 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      - "443:443"
     volumes:
       - ./volumes/nginx/nginx.conf:/etc/nginx/nginx.conf:ro,z
       - ./volumes/nginx/conf.d:/etc/nginx/conf.d:ro,z
-      - ./volumes/nginx/ssl:/etc/ssl/certs:ro,z
       - ./volumes/nginx/logs:/var/log/nginx:z
     depends_on:
       - kong
       - studio
     environment:
-      - DOMAIN_NAME=${DOMAIN_NAME}
+      - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
       - SUPABASE_PUBLIC_URL=${SUPABASE_PUBLIC_URL}
-    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
 
   # Database backup service
-  db-backup:
-    container_name: supabase-db-backup
-    image: postgres:15-alpine
-    restart: unless-stopped
-    volumes:
-      - ./volumes/backups:/backups:z
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
-    command: "/bin/sh -c 'while true; do /usr/local/bin/backup.sh; sleep 6h; done'"
+#  db-backup:
+#    container_name: supabase-db-backup
+#    image: postgres:15-alpine
+#    restart: unless-stopped
+#    volumes:
+#      - ./volumes/backups:/backups:z
+#    depends_on:
+#      db:
+#        condition: service_healthy
+#    environment:
+#      - POSTGRES_HOST=${POSTGRES_HOST}
+#      - POSTGRES_PORT=${POSTGRES_PORT}
+#      - POSTGRES_DB=${POSTGRES_DB}
+#      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+#      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
+#    command: "/bin/sh -c 'while true; do /usr/local/bin/backup.sh; sleep 6h; done'"
 
   # Redis for caching (optional but recommended for production)
   redis:
@@ -279,11 +275,11 @@ services:
       PORT: 4000
       DB_HOST: ${POSTGRES_HOST}
       DB_PORT: ${POSTGRES_PORT}
-      DB_USER: postgres
+      DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${POSTGRES_DB}
       DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
-      DB_ENC_KEY: supabaserealtime
+      DB_ENC_KEY: ${POSTGRES_ENC_KEY}
       API_JWT_SECRET: ${JWT_SECRET}
       SECRET_KEY_BASE: ${SECRET_KEY_BASE}
       ERL_AFLAGS: -proto_dist inet_tcp
@@ -293,7 +289,6 @@ services:
       SEED_SELF_HOST: true
       RUN_JANITOR: true
 
-  # To use S3 backed storage: docker compose -f docker-compose.yml -f docker-compose.s3.yml up
   storage:
     container_name: supabase-storage
     image: supabase/storage-api:v1.25.7
@@ -326,7 +321,7 @@ services:
       SERVICE_KEY: ${SERVICE_ROLE_KEY}
       POSTGREST_URL: http://rest:3000
       PGRST_JWT_SECRET: ${JWT_SECRET}
-      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/_supabase
       FILE_SIZE_LIMIT: 52428800
       STORAGE_BACKEND: file
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
@@ -461,7 +456,6 @@ services:
     image: supabase/postgres:15.8.1.060
     restart: unless-stopped
     volumes:
-    - ./volumes/db/site.sql:/docker-entrypoint-initdb.d/zzz-site.sql:Z
     - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
     - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
     - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
@@ -491,7 +485,7 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDATABASE: ${POSTGRES_DB}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB_ROOT}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXP: ${JWT_EXPIRY}
     command:
@@ -502,6 +496,36 @@ services:
         "-c",
         "log_min_messages=fatal" # prevents Realtime polling queries from appearing in logs
       ]
+
+  vector:
+    container_name: supabase-vector
+    image: timberio/vector:0.28.1-alpine
+    restart: unless-stopped
+    volumes:
+      - ./volumes/logs/vector.yml:/etc/vector/vector.yml:ro,z
+      - ${DOCKER_SOCKET_LOCATION}:/var/run/docker.sock:ro,z
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://vector:9001/health"
+        ]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    environment:
+      LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
+    command:
+      [
+        "--config",
+        "/etc/vector/vector.yml"
+      ]
+    security_opt:
+      - "label=disable"
 
   supavisor:
     container_name: supabase-pooler
@@ -536,7 +560,7 @@ services:
       POSTGRES_PORT: ${POSTGRES_PORT}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      DATABASE_URL: ecto://supabase_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/_supabase
+      DATABASE_URL: ecto://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       CLUSTER_POSTGRES: true
       SECRET_KEY_BASE: ${SECRET_KEY_BASE}
       VAULT_ENC_KEY: ${VAULT_ENC_KEY}

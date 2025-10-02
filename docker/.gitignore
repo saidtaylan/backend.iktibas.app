@@ -1,5 +1,9 @@
 volumes/db/data
 volumes/storage
+volumes/nginx/logs/*
+!volumes/nginx/logs/.gitkeep
+volumes/backups/*
+!volumes/backups/.gitkeep
 .env
 test.http
 docker-compose.override.yml
