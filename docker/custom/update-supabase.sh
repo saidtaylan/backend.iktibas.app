@@ -151,7 +151,7 @@ show_diff() {
     echo "====================================="
     
     # Sadece orijinal Supabase servislerini karşılaştır
-    # Production eklentilerini (nginx, certbot, smtp vb.) filtrele
+    # Production eklentilerini (nginx, certbot vb.) filtrele
     
     # Geçici dosya oluştur (production eklentileri olmadan)
     temp_current="/tmp/current-clean.yml"
@@ -161,7 +161,6 @@ show_diff() {
     sed '/# Nginx reverse proxy/,/studio:/d' "$COMPOSE_FILE" | \
     sed '/^  nginx:/,/^  [a-z]/{ /^  [a-z]/!d; }' | \
     sed '/^  certbot:/,/^  [a-z]/{ /^  [a-z]/!d; }' | \
-    sed '/^  smtp:/,/^  [a-z]/{ /^  [a-z]/!d; }' | \
     sed '/^  db-backup:/,/^  [a-z]/{ /^  [a-z]/!d; }' | \
     sed '/^  redis:/,/^  [a-z]/{ /^  [a-z]/!d; }' > "$temp_current"
     
@@ -186,7 +185,7 @@ extract_production_changes() {
     # Production servislerini ayır
     production_services="/tmp/production-services.yml"
     
-    # Nginx, Certbot, SMTP, backup, redis servislerini çıkar
+    # Nginx, Certbot, backup, redis servislerini çıkar
     sed -n '/# Nginx reverse proxy/,/studio:/p' "$COMPOSE_FILE" | \
     sed '/studio:/d' > "$production_services"
     

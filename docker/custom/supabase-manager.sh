@@ -119,7 +119,7 @@ ssl_setup() {
     $COMPOSE_CMD exec certbot certbot certonly \
         --webroot \
         --webroot-path=/var/www/certbot \
-        --email admin@$DOMAIN_NAME \
+        --email support@$DOMAIN_NAME \
         --agree-tos \
         --no-eff-email \
         -d $DOMAIN_NAME
@@ -138,7 +138,7 @@ init() {
     
     # Gerekli dizinleri oluştur
     log "Gerekli dizinler oluşturuluyor..."
-    mkdir -p volumes/{nginx/logs,certbot/{conf,www,logs},smtp/{spool,logs},backups,redis,storage,db/data,functions}
+    mkdir -p volumes/{nginx/logs,certbot/{conf,www,logs},backups,redis,storage,db/data,functions}
     mkdir -p volumes/api volumes/logs volumes/pooler
     
     # İlk SSL kurulumu (eğer domain tanımlıysa)
