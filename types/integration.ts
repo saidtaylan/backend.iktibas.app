@@ -185,6 +185,7 @@ export interface QuoteWithSync {
   book_id?: string;
   content?: string;
   page?: number;
+  type?: string;
   status: string;
   created_at: string;
   updated_at?: string;
