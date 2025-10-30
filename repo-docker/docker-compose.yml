@@ -25,7 +25,6 @@ services:
       - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
       - SUPABASE_PUBLIC_URL=${SUPABASE_PUBLIC_URL}
 
-
   studio:
     container_name: supabase-studio
     image: supabase/studio:2025.06.30-sha-6f5982d
