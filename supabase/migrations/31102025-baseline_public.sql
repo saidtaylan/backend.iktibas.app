@@ -29,7 +29,7 @@ CREATE TYPE "public"."auth_type" AS ENUM (
 );
 
 
-ALTER TYPE "public"."auth_type" OWNER TO "supabase_admin";
+ALTER TYPE "public"."auth_type" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."connection_status" AS ENUM (
@@ -39,7 +39,17 @@ CREATE TYPE "public"."connection_status" AS ENUM (
 );
 
 
-ALTER TYPE "public"."connection_status" OWNER TO "supabase_admin";
+ALTER TYPE "public"."connection_status" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."content_type" AS ENUM (
+    'pdf',
+    'image',
+    'audio'
+);
+
+
+ALTER TYPE "public"."content_type" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."readspace_role" AS ENUM (
@@ -50,7 +60,20 @@ CREATE TYPE "public"."readspace_role" AS ENUM (
 );
 
 
-ALTER TYPE "public"."readspace_role" OWNER TO "supabase_admin";
+ALTER TYPE "public"."readspace_role" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."readspace_subscription_type" AS ENUM (
+    'free',
+    'team'
+);
+
+
+ALTER TYPE "public"."readspace_subscription_type" OWNER TO "postgres";
+
+
+COMMENT ON TYPE "public"."readspace_subscription_type" IS 'ReadSpace abonelik tipi: free veya team';
+
 
 
 CREATE TYPE "public"."sync_direction" AS ENUM (
@@ -60,7 +83,7 @@ CREATE TYPE "public"."sync_direction" AS ENUM (
 );
 
 
-ALTER TYPE "public"."sync_direction" OWNER TO "supabase_admin";
+ALTER TYPE "public"."sync_direction" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."sync_frequency" AS ENUM (
@@ -71,7 +94,7 @@ CREATE TYPE "public"."sync_frequency" AS ENUM (
 );
 
 
-ALTER TYPE "public"."sync_frequency" OWNER TO "supabase_admin";
+ALTER TYPE "public"."sync_frequency" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."sync_status" AS ENUM (
@@ -81,7 +104,20 @@ CREATE TYPE "public"."sync_status" AS ENUM (
 );
 
 
-ALTER TYPE "public"."sync_status" OWNER TO "supabase_admin";
+ALTER TYPE "public"."sync_status" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."user_subscription_type" AS ENUM (
+    'free',
+    'pro'
+);
+
+
+ALTER TYPE "public"."user_subscription_type" OWNER TO "postgres";
+
+
+COMMENT ON TYPE "public"."user_subscription_type" IS 'Kullanıcı abonelik tipi: free veya pro';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."accept_invitation"("p_invitation_id" "uuid") RETURNS "void"
@@ -141,7 +177,7 @@ BEGIN
 END;$$;
 
 
-ALTER FUNCTION "public"."accept_invitation"("p_invitation_id" "uuid") OWNER TO "supabase_admin";
+ALTER FUNCTION "public"."accept_invitation"("p_invitation_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."cleanup_old_quotes"() RETURNS integer
@@ -168,7 +204,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."cleanup_old_quotes"() OWNER TO "supabase_admin";
+ALTER FUNCTION "public"."cleanup_old_quotes"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."decline_invitation"("p_invitation_id" "uuid") RETURNS "void"
@@ -214,7 +250,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."decline_invitation"("p_invitation_id" "uuid") OWNER TO "supabase_admin";
+ALTER FUNCTION "public"."decline_invitation"("p_invitation_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."export_readspace_snapshot"("p_readspace_id" "uuid") RETURNS "jsonb"
@@ -314,7 +350,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."export_readspace_snapshot"("p_readspace_id" "uuid") OWNER TO "supabase_admin";
+ALTER FUNCTION "public"."export_readspace_snapshot"("p_readspace_id" "uuid") OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."export_readspace_snapshot"("p_readspace_id" "uuid") IS 'Returns a JSON snapshot of a readspace with books and quotes for export.';
@@ -333,7 +369,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."find_user_id_by_email"("user_email" "text") OWNER TO "supabase_admin";
+ALTER FUNCTION "public"."find_user_id_by_email"("user_email" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."gemini_rr_next"("total" integer) RETURNS integer
@@ -351,7 +387,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."gemini_rr_next"("total" integer) OWNER TO "supabase_admin";
+ALTER FUNCTION "public"."gemini_rr_next"("total" integer) OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."gemini_rr_next"("total" integer) IS 'Returns the next round-robin index in [0,total) using gemini_rr_seq.';
@@ -425,7 +461,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."handle_new_user"() OWNER TO "supabase_admin";
+ALTER FUNCTION "public"."handle_new_user"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."import_readspace_snapshot"("p_payload" "jsonb") RETURNS "jsonb"
@@ -585,7 +621,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."import_readspace_snapshot"("p_payload" "jsonb") OWNER TO "supabase_admin";
+ALTER FUNCTION "public"."import_readspace_snapshot"("p_payload" "jsonb") OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."import_readspace_snapshot"("p_payload" "jsonb") IS 'Imports a JSON snapshot by creating readspaces, books, quotes, and assigning ownership to the caller.';
@@ -805,7 +841,7 @@ begin
 end;$$;
 
 
-ALTER FUNCTION "public"."import_readspace_snapshot"("p_payload" "jsonb", "p_readspace_suffix" "text") OWNER TO "supabase_admin";
+ALTER FUNCTION "public"."import_readspace_snapshot"("p_payload" "jsonb", "p_readspace_suffix" "text") OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."import_readspace_snapshot"("p_payload" "jsonb", "p_readspace_suffix" "text") IS 'Imports a JSON snapshot by creating readspaces, books, quotes, assigning ownership to the caller, and optionally applying a name suffix for duplicates.';
@@ -825,7 +861,7 @@ CREATE OR REPLACE FUNCTION "public"."increment_view_count"("slug" "text") RETURN
 END;$$;
 
 
-ALTER FUNCTION "public"."increment_view_count"("slug" "text") OWNER TO "supabase_admin";
+ALTER FUNCTION "public"."increment_view_count"("slug" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."is_published_quote_accessible"("slug" "text") RETURNS boolean
@@ -841,7 +877,39 @@ CREATE OR REPLACE FUNCTION "public"."is_published_quote_accessible"("slug" "text
 END;$$;
 
 
-ALTER FUNCTION "public"."is_published_quote_accessible"("slug" "text") OWNER TO "supabase_admin";
+ALTER FUNCTION "public"."is_published_quote_accessible"("slug" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_member_count_on_delete"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  -- Member silindiğinde readspace'in count'unu azalt
+  UPDATE public.readspaces 
+  SET member_count = GREATEST(member_count - 1, 0)
+  WHERE id = OLD.readspace_id;
+  RETURN OLD;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."update_member_count_on_delete"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_member_count_on_insert"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  -- Yeni member eklendiğinde readspace'in count'unu artır
+  UPDATE public.readspaces 
+  SET member_count = member_count + 1
+  WHERE id = NEW.readspace_id;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."update_member_count_on_insert"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
@@ -854,7 +922,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."update_updated_at_column"() OWNER TO "supabase_admin";
+ALTER FUNCTION "public"."update_updated_at_column"() OWNER TO "postgres";
 
 SET default_tablespace = '';
 
@@ -876,7 +944,7 @@ CREATE TABLE IF NOT EXISTS "public"."app_versions" (
 );
 
 
-ALTER TABLE "public"."app_versions" OWNER TO "supabase_admin";
+ALTER TABLE "public"."app_versions" OWNER TO "postgres";
 
 
 ALTER TABLE "public"."app_versions" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
@@ -887,6 +955,35 @@ ALTER TABLE "public"."app_versions" ALTER COLUMN "id" ADD GENERATED BY DEFAULT A
     NO MAXVALUE
     CACHE 1
 );
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."book_reading_progress" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "book_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "last_read_page" integer DEFAULT 1 NOT NULL,
+    "last_read_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "reading_status" "text" DEFAULT 'not_started'::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    CONSTRAINT "book_reading_progress_last_read_page_check" CHECK (("last_read_page" > 0)),
+    CONSTRAINT "book_reading_progress_reading_status_check" CHECK (("reading_status" = ANY (ARRAY['not_started'::"text", 'reading'::"text", 'completed'::"text"])))
+);
+
+
+ALTER TABLE "public"."book_reading_progress" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."book_reading_progress" IS 'Kullanıcıların kitap okuma ilerlemesi';
+
+
+
+COMMENT ON COLUMN "public"."book_reading_progress"."last_read_page" IS 'Son okunan sayfa numarası';
+
+
+
+COMMENT ON COLUMN "public"."book_reading_progress"."reading_status" IS 'Okuma durumu: not_started, reading, completed';
 
 
 
@@ -905,11 +1002,17 @@ CREATE TABLE IF NOT EXISTS "public"."books" (
     "image_url" "text",
     "readspace_id" "uuid" NOT NULL,
     "page_count" integer,
-    "sync_data" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL
+    "sync_data" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "content_type" "public"."content_type",
+    "storage_path" "text",
+    "file_size" bigint,
+    "content_uploaded_by" "uuid",
+    "content_uploaded_at" timestamp with time zone,
+    "external_file_url" "text"
 );
 
 
-ALTER TABLE "public"."books" OWNER TO "supabase_admin";
+ALTER TABLE "public"."books" OWNER TO "postgres";
 
 
 COMMENT ON TABLE "public"."books" IS 'Kullanıcıların kütüphanesindeki kitaplar.';
@@ -917,6 +1020,26 @@ COMMENT ON TABLE "public"."books" IS 'Kullanıcıların kütüphanesindeki kitap
 
 
 COMMENT ON COLUMN "public"."books"."sync_data" IS 'Provider-specific sync metadata and status';
+
+
+
+COMMENT ON COLUMN "public"."books"."content_type" IS 'İçerik tipi: pdf, epub, audio';
+
+
+
+COMMENT ON COLUMN "public"."books"."storage_path" IS 'Supabase Storage path (örn: readspace_id/book_id.pdf)';
+
+
+
+COMMENT ON COLUMN "public"."books"."file_size" IS 'Dosya boyutu (bytes)';
+
+
+
+COMMENT ON COLUMN "public"."books"."content_uploaded_by" IS 'İçeriği yükleyen kullanıcı';
+
+
+
+COMMENT ON COLUMN "public"."books"."content_uploaded_at" IS 'İçerik yüklenme zamanı';
 
 
 
@@ -928,7 +1051,7 @@ CREATE TABLE IF NOT EXISTS "public"."cleanup_logs" (
 );
 
 
-ALTER TABLE "public"."cleanup_logs" OWNER TO "supabase_admin";
+ALTER TABLE "public"."cleanup_logs" OWNER TO "postgres";
 
 
 CREATE SEQUENCE IF NOT EXISTS "public"."cleanup_logs_id_seq"
@@ -940,7 +1063,7 @@ CREATE SEQUENCE IF NOT EXISTS "public"."cleanup_logs_id_seq"
     CACHE 1;
 
 
-ALTER SEQUENCE "public"."cleanup_logs_id_seq" OWNER TO "supabase_admin";
+ALTER SEQUENCE "public"."cleanup_logs_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."cleanup_logs_id_seq" OWNED BY "public"."cleanup_logs"."id";
@@ -955,7 +1078,7 @@ CREATE SEQUENCE IF NOT EXISTS "public"."gemini_rr_seq"
     CACHE 1;
 
 
-ALTER SEQUENCE "public"."gemini_rr_seq" OWNER TO "supabase_admin";
+ALTER SEQUENCE "public"."gemini_rr_seq" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."integration_destinations" (
@@ -981,7 +1104,7 @@ CREATE TABLE IF NOT EXISTS "public"."integration_destinations" (
 );
 
 
-ALTER TABLE "public"."integration_destinations" OWNER TO "supabase_admin";
+ALTER TABLE "public"."integration_destinations" OWNER TO "postgres";
 
 
 COMMENT ON TABLE "public"."integration_destinations" IS 'Target destinations within external providers (pages, databases, etc.)';
@@ -996,7 +1119,7 @@ CREATE TABLE IF NOT EXISTS "public"."invitations" (
     "invitee_user_id" "uuid",
     "role" "public"."readspace_role" NOT NULL,
     "status" "text" DEFAULT 'pending'::"text" NOT NULL,
-    "token" "text" NOT NULL,
+    "token" "text" DEFAULT "encode"("extensions"."gen_random_bytes"(16), 'hex'::"text") NOT NULL,
     "message" "text",
     "expires_at" timestamp with time zone,
     "accepted_at" timestamp with time zone,
@@ -1006,7 +1129,7 @@ CREATE TABLE IF NOT EXISTS "public"."invitations" (
 );
 
 
-ALTER TABLE "public"."invitations" OWNER TO "supabase_admin";
+ALTER TABLE "public"."invitations" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."profiles" (
@@ -1014,14 +1137,24 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "name" "text",
     "avatar_url" "text",
     "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
-    "email" "text"
+    "email" "text",
+    "subscription_type" "public"."user_subscription_type" DEFAULT 'pro'::"public"."user_subscription_type" NOT NULL,
+    "subscription_expires_at" timestamp with time zone
 );
 
 
-ALTER TABLE "public"."profiles" OWNER TO "supabase_admin";
+ALTER TABLE "public"."profiles" OWNER TO "postgres";
 
 
 COMMENT ON TABLE "public"."profiles" IS 'Kullanıcıların herkese açık profil verilerini ve kişisel ayarlarını tutar.';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."subscription_type" IS 'Kullanıcının abonelik tipi';
+
+
+
+COMMENT ON COLUMN "public"."profiles"."subscription_expires_at" IS 'Abonelik bitiş tarihi (NULL ise sınırsız veya free)';
 
 
 
@@ -1038,7 +1171,7 @@ CREATE TABLE IF NOT EXISTS "public"."providers" (
 );
 
 
-ALTER TABLE "public"."providers" OWNER TO "supabase_admin";
+ALTER TABLE "public"."providers" OWNER TO "postgres";
 
 
 COMMENT ON TABLE "public"."providers" IS 'External integration providers (Notion, Google Docs, etc.)';
@@ -1061,7 +1194,7 @@ CREATE TABLE IF NOT EXISTS "public"."published_quotes" (
 );
 
 
-ALTER TABLE "public"."published_quotes" OWNER TO "supabase_admin";
+ALTER TABLE "public"."published_quotes" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."quotes" (
@@ -1076,14 +1209,43 @@ CREATE TABLE IF NOT EXISTS "public"."quotes" (
     "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()),
     "notification_shown" boolean DEFAULT false NOT NULL,
     "user_device_id" "uuid",
-    "sync_data" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL
+    "sync_data" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "type" "public"."content_type"
 );
 
 
-ALTER TABLE "public"."quotes" OWNER TO "supabase_admin";
+ALTER TABLE "public"."quotes" OWNER TO "postgres";
 
 
 COMMENT ON COLUMN "public"."quotes"."sync_data" IS 'Provider-specific sync metadata and status';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."readers" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "book_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "readspace_id" "uuid" NOT NULL,
+    "started_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "completed_at" timestamp with time zone,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()) NOT NULL
+);
+
+
+ALTER TABLE "public"."readers" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."readers" IS 'Bir kitabı okuyan kullanıcılar (team readspace için çoklu okuyucu takibi)';
+
+
+
+COMMENT ON COLUMN "public"."readers"."completed_at" IS 'Kitabı bitirme tarihi (NULL ise devam ediyor)';
+
+
+
+COMMENT ON COLUMN "public"."readers"."is_active" IS 'Hala aktif olarak okuyor mu?';
 
 
 
@@ -1104,7 +1266,7 @@ CREATE TABLE IF NOT EXISTS "public"."readspace_integrations" (
 );
 
 
-ALTER TABLE "public"."readspace_integrations" OWNER TO "supabase_admin";
+ALTER TABLE "public"."readspace_integrations" OWNER TO "postgres";
 
 
 COMMENT ON TABLE "public"."readspace_integrations" IS 'User integrations with external providers for specific readspaces';
@@ -1120,7 +1282,7 @@ CREATE TABLE IF NOT EXISTS "public"."readspace_memberships" (
 );
 
 
-ALTER TABLE "public"."readspace_memberships" OWNER TO "supabase_admin";
+ALTER TABLE "public"."readspace_memberships" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."readspaces" (
@@ -1132,14 +1294,29 @@ CREATE TABLE IF NOT EXISTS "public"."readspaces" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "is_shared" boolean DEFAULT false,
-    "active_book_id" "uuid"
+    "active_book_id" "uuid",
+    "member_count" integer DEFAULT 1 NOT NULL,
+    "subscription_type" "public"."readspace_subscription_type" DEFAULT 'team'::"public"."readspace_subscription_type" NOT NULL,
+    "subscription_expires_at" timestamp with time zone
 );
 
 
-ALTER TABLE "public"."readspaces" OWNER TO "supabase_admin";
+ALTER TABLE "public"."readspaces" OWNER TO "postgres";
 
 
 COMMENT ON COLUMN "public"."readspaces"."active_book_id" IS 'ReadSpace içinde aktif olan kitabın ID''si';
+
+
+
+COMMENT ON COLUMN "public"."readspaces"."member_count" IS 'Üye sayısı (denormalized - trigger ile otomatik güncellenir)';
+
+
+
+COMMENT ON COLUMN "public"."readspaces"."subscription_type" IS 'ReadSpace abonelik tipi';
+
+
+
+COMMENT ON COLUMN "public"."readspaces"."subscription_expires_at" IS 'Abonelik bitiş tarihi';
 
 
 
@@ -1157,7 +1334,7 @@ CREATE TABLE IF NOT EXISTS "public"."sync_logs" (
 );
 
 
-ALTER TABLE "public"."sync_logs" OWNER TO "supabase_admin";
+ALTER TABLE "public"."sync_logs" OWNER TO "postgres";
 
 
 COMMENT ON TABLE "public"."sync_logs" IS 'Sync operation history and status tracking';
@@ -1178,7 +1355,7 @@ CREATE TABLE IF NOT EXISTS "public"."user_devices" (
 );
 
 
-ALTER TABLE "public"."user_devices" OWNER TO "supabase_admin";
+ALTER TABLE "public"."user_devices" OWNER TO "postgres";
 
 
 COMMENT ON TABLE "public"."user_devices" IS 'Kullanıcıların farklı cihazlarının kaydı ve aktif readspace yönetimi';
@@ -1204,6 +1381,16 @@ ALTER TABLE ONLY "public"."app_versions"
 
 ALTER TABLE ONLY "public"."app_versions"
     ADD CONSTRAINT "app_versions_platform_version_build_key" UNIQUE ("platform", "version", "build_number");
+
+
+
+ALTER TABLE ONLY "public"."book_reading_progress"
+    ADD CONSTRAINT "book_reading_progress_book_id_user_id_key" UNIQUE ("book_id", "user_id");
+
+
+
+ALTER TABLE ONLY "public"."book_reading_progress"
+    ADD CONSTRAINT "book_reading_progress_pkey" PRIMARY KEY ("id");
 
 
 
@@ -1249,6 +1436,16 @@ ALTER TABLE ONLY "public"."providers"
 
 ALTER TABLE ONLY "public"."quotes"
     ADD CONSTRAINT "quotes_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."readers"
+    ADD CONSTRAINT "readers_book_id_user_id_readspace_id_key" UNIQUE ("book_id", "user_id", "readspace_id");
+
+
+
+ALTER TABLE ONLY "public"."readers"
+    ADD CONSTRAINT "readers_pkey" PRIMARY KEY ("id");
 
 
 
@@ -1301,6 +1498,22 @@ CREATE INDEX "idx_app_versions_platform_released_date" ON "public"."app_versions
 
 
 
+CREATE INDEX "idx_book_reading_progress_book_id" ON "public"."book_reading_progress" USING "btree" ("book_id");
+
+
+
+CREATE INDEX "idx_book_reading_progress_status" ON "public"."book_reading_progress" USING "btree" ("reading_status");
+
+
+
+CREATE INDEX "idx_book_reading_progress_user_id" ON "public"."book_reading_progress" USING "btree" ("user_id");
+
+
+
+CREATE INDEX "idx_books_content_type" ON "public"."books" USING "btree" ("content_type") WHERE ("content_type" IS NOT NULL);
+
+
+
 CREATE INDEX "idx_books_sync_data" ON "public"."books" USING "gin" ("sync_data");
 
 
@@ -1321,6 +1534,10 @@ CREATE INDEX "idx_invitations_readspace_id_status" ON "public"."invitations" USI
 
 
 
+CREATE INDEX "idx_profiles_subscription_expires" ON "public"."profiles" USING "btree" ("subscription_expires_at") WHERE ("subscription_expires_at" IS NOT NULL);
+
+
+
 CREATE INDEX "idx_quotes_created_at" ON "public"."quotes" USING "btree" ("created_at" DESC);
 
 
@@ -1338,6 +1555,22 @@ CREATE INDEX "idx_quotes_sync_data" ON "public"."quotes" USING "gin" ("sync_data
 
 
 CREATE INDEX "idx_quotes_user_id" ON "public"."quotes" USING "btree" ("user_id");
+
+
+
+CREATE INDEX "idx_readers_active" ON "public"."readers" USING "btree" ("readspace_id", "book_id") WHERE ("is_active" = true);
+
+
+
+CREATE INDEX "idx_readers_book_id" ON "public"."readers" USING "btree" ("book_id");
+
+
+
+CREATE INDEX "idx_readers_readspace_id" ON "public"."readers" USING "btree" ("readspace_id");
+
+
+
+CREATE INDEX "idx_readers_user_id" ON "public"."readers" USING "btree" ("user_id");
 
 
 
@@ -1417,7 +1650,19 @@ CREATE INDEX "user_devices_user_id_idx" ON "public"."user_devices" USING "btree"
 
 
 
+CREATE OR REPLACE TRIGGER "after_member_delete" AFTER DELETE ON "public"."readspace_memberships" FOR EACH ROW EXECUTE FUNCTION "public"."update_member_count_on_delete"();
+
+
+
+CREATE OR REPLACE TRIGGER "after_member_insert" AFTER INSERT ON "public"."readspace_memberships" FOR EACH ROW EXECUTE FUNCTION "public"."update_member_count_on_insert"();
+
+
+
 CREATE OR REPLACE TRIGGER "on_updated" BEFORE UPDATE ON "public"."books" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_book_reading_progress_updated_at" BEFORE UPDATE ON "public"."book_reading_progress" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 
@@ -1429,7 +1674,26 @@ CREATE OR REPLACE TRIGGER "update_providers_updated_at" BEFORE UPDATE ON "public
 
 
 
+CREATE OR REPLACE TRIGGER "update_readers_updated_at" BEFORE UPDATE ON "public"."readers" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
 CREATE OR REPLACE TRIGGER "update_readspace_integrations_updated_at" BEFORE UPDATE ON "public"."readspace_integrations" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+ALTER TABLE ONLY "public"."book_reading_progress"
+    ADD CONSTRAINT "book_reading_progress_book_id_fkey" FOREIGN KEY ("book_id") REFERENCES "public"."books"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."book_reading_progress"
+    ADD CONSTRAINT "book_reading_progress_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."books"
+    ADD CONSTRAINT "books_content_uploaded_by_fkey" FOREIGN KEY ("content_uploaded_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 
@@ -1490,6 +1754,21 @@ ALTER TABLE ONLY "public"."quotes"
 
 ALTER TABLE ONLY "public"."quotes"
     ADD CONSTRAINT "quotes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."readers"
+    ADD CONSTRAINT "readers_book_id_fkey" FOREIGN KEY ("book_id") REFERENCES "public"."books"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."readers"
+    ADD CONSTRAINT "readers_readspace_id_fkey" FOREIGN KEY ("readspace_id") REFERENCES "public"."readspaces"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."readers"
+    ADD CONSTRAINT "readers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 
@@ -1588,11 +1867,31 @@ CREATE POLICY "Users can delete own devices" ON "public"."user_devices" FOR DELE
 
 
 
+CREATE POLICY "Users can delete their own reading progress" ON "public"."book_reading_progress" FOR DELETE USING (("auth"."uid"() = "user_id"));
+
+
+
 CREATE POLICY "Users can insert own devices" ON "public"."user_devices" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 
+CREATE POLICY "Users can insert their own reading progress" ON "public"."book_reading_progress" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Users can insert themselves as readers" ON "public"."readers" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+
 CREATE POLICY "Users can update own devices" ON "public"."user_devices" FOR UPDATE USING (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Users can update their own reader status" ON "public"."readers" FOR UPDATE USING (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Users can update their own reading progress" ON "public"."book_reading_progress" FOR UPDATE USING (("auth"."uid"() = "user_id"));
 
 
 
@@ -1616,13 +1915,26 @@ CREATE POLICY "Users can view own sync logs" ON "public"."sync_logs" USING ((EXI
 
 
 
+CREATE POLICY "Users can view readers in their readspaces" ON "public"."readers" FOR SELECT USING (("readspace_id" IN ( SELECT "readspace_memberships"."readspace_id"
+   FROM "public"."readspace_memberships"
+  WHERE ("readspace_memberships"."user_id" = "auth"."uid"()))));
+
+
+
 CREATE POLICY "Users can view readspaces they are members of" ON "public"."readspaces" FOR SELECT USING ((EXISTS ( SELECT 1
    FROM "public"."readspace_memberships"
   WHERE (("readspace_memberships"."readspace_id" = "readspaces"."id") AND ("readspace_memberships"."user_id" = "auth"."uid"())))));
 
 
 
+CREATE POLICY "Users can view their own reading progress" ON "public"."book_reading_progress" FOR SELECT USING (("auth"."uid"() = "user_id"));
+
+
+
 ALTER TABLE "public"."app_versions" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."book_reading_progress" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."books" ENABLE ROW LEVEL SECURITY;
@@ -1819,6 +2131,9 @@ CREATE POLICY "quotes_update_policy" ON "public"."quotes" FOR UPDATE USING ((EXI
 
 
 
+ALTER TABLE "public"."readers" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."readspace_integrations" ENABLE ROW LEVEL SECURITY;
 
 
@@ -1831,7 +2146,7 @@ ALTER TABLE "public"."sync_logs" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."user_devices" ENABLE ROW LEVEL SECURITY;
 
 
-GRANT USAGE ON SCHEMA "public" TO "supabase_admin";
+GRANT USAGE ON SCHEMA "public" TO "postgres";
 GRANT USAGE ON SCHEMA "public" TO "anon";
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
 GRANT USAGE ON SCHEMA "public" TO "service_role";
@@ -1904,6 +2219,18 @@ GRANT ALL ON FUNCTION "public"."is_published_quote_accessible"("slug" "text") TO
 
 
 
+GRANT ALL ON FUNCTION "public"."update_member_count_on_delete"() TO "anon";
+GRANT ALL ON FUNCTION "public"."update_member_count_on_delete"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_member_count_on_delete"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_member_count_on_insert"() TO "anon";
+GRANT ALL ON FUNCTION "public"."update_member_count_on_insert"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_member_count_on_insert"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "anon";
 GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "service_role";
@@ -1919,6 +2246,12 @@ GRANT ALL ON TABLE "public"."app_versions" TO "service_role";
 GRANT ALL ON SEQUENCE "public"."app_versions_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."app_versions_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."app_versions_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."book_reading_progress" TO "anon";
+GRANT ALL ON TABLE "public"."book_reading_progress" TO "authenticated";
+GRANT ALL ON TABLE "public"."book_reading_progress" TO "service_role";
 
 
 
@@ -1982,6 +2315,12 @@ GRANT ALL ON TABLE "public"."quotes" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."readers" TO "anon";
+GRANT ALL ON TABLE "public"."readers" TO "authenticated";
+GRANT ALL ON TABLE "public"."readers" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."readspace_integrations" TO "anon";
 GRANT ALL ON TABLE "public"."readspace_integrations" TO "authenticated";
 GRANT ALL ON TABLE "public"."readspace_integrations" TO "service_role";
@@ -2012,30 +2351,30 @@ GRANT ALL ON TABLE "public"."user_devices" TO "service_role";
 
 
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "supabase_admin";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "service_role";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "service_role";
 
 
 
 
 
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "supabase_admin";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "service_role";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "service_role";
 
 
 
 
 
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON TABLES TO "supabase_admin";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
 
 
 
@@ -2043,3 +2382,12 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL 
 
 
 RESET ALL;
+
+
+-- Trigger: auth.users tablosuna yeni kullanıcı eklendiğinde handle_new_user fonksiyonunu çalıştır
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
