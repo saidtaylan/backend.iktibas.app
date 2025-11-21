@@ -1,6 +1,6 @@
 #!/bin/bash
 sudo dnf update -y
-sudo dnf install epel-release -y
+sudo dnf install epel-release make -y
 
 BASE_DIRECTORY=/opt/backend.iktibas.app
 DOMAIN=api.iktibas.app
