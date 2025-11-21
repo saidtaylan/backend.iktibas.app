@@ -314,6 +314,8 @@ services:
     depends_on:
       analytics:
         condition: service_healthy
+    env_file:
+      - ./.env.functions
     environment:
       JWT_SECRET: ${JWT_SECRET}
       SUPABASE_URL: http://kong:8000
@@ -471,7 +473,7 @@ services:
     image: supabase/supavisor:2.7.3
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${POSTGRES_PORT}:5432"
+      - "${POSTGRES_PORT}:5432"
       - "127.0.0.1:${POOLER_PROXY_PORT_TRANSACTION}:6543"
     volumes:
       - ./volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro,z

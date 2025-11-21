@@ -1,8 +1,11 @@
+console.log("start");
+
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { prompt as promptText } from "./prompt.ts";
 // Gemini Files API URL'leri
 const MODEL_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
+console.log("log 1");
 // CORS başlıkları
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,7 +25,7 @@ function detectImageMimeType(base64String) {
  * @param mimeType Dosyanın MIME türü (örn: "image/jpeg")
  * @param apiKey Gemini API anahtarı
  */ async function uploadFileToGemini(base64Data, mimeType, apiKey1) {
-  console.log(`[upload-and-ocr] 🟡 FilesAPI upload start | mime=${mimeType} sizeB64Len=${base64Data?.length}`);
+  console.log(`Görsel Files API'ye yükleniyor... mime: ${mimeType}, size: ${base64Data.length}`);
   // Base64'i binary'ye çevir
   const binaryString = atob(base64Data);
   const bytes = new Uint8Array(binaryString.length);
@@ -48,18 +51,15 @@ function detectImageMimeType(base64String) {
     })
   });
   if (!initialResponse.ok) {
-    const text = await initialResponse.text();
-    console.error(`[upload-and-ocr] ❌ FilesAPI init failed | status=${initialResponse.status} body=${text}`);
-    throw new Error(`İlk upload isteği başarısız: ${text}`);
+    const error = await initialResponse.json();
+    throw new Error(`İlk upload isteği başarısız: ${JSON.stringify(error)}`);
   }
   // Upload URL'sini header'dan al
   const actualUploadUrl = initialResponse.headers.get("x-goog-upload-url");
   if (!actualUploadUrl) {
-    console.error("[upload-and-ocr] ❌ Upload URL alınamadı (x-goog-upload-url boş)" );
     throw new Error("Upload URL alınamadı");
   }
   // 2. Gerçek bytes'ları yükle
-  const tUploadBytesStart = Date.now();
   const uploadResponse = await fetch(actualUploadUrl, {
     method: "POST",
     headers: {
@@ -71,12 +71,9 @@ function detectImageMimeType(base64String) {
   });
   if (!uploadResponse.ok) {
     const error = await uploadResponse.text();
-    console.error(`[upload-and-ocr] ❌ FilesAPI bytes upload failed | status=${uploadResponse.status} body=${error}`);
     throw new Error(`Dosya yükleme başarısız: ${error}`);
   }
-  const elapsed = Date.now() - tUploadBytesStart;
   const result = await uploadResponse.json();
-  console.log(`[upload-and-ocr] ✅ FilesAPI upload ok | bytes=${numBytes} tookMs=${elapsed} fileName=${result?.file?.name}`);
   return result.file;
 }
 /**
@@ -103,8 +100,6 @@ function detectImageMimeType(base64String) {
       }
     ]
   };
-  console.log(`[upload-and-ocr] 🟡 Gemini generate start | file=${fileName} mime=${mimeType}`);
-  const tGen = Date.now();
   const response = await fetch(`${MODEL_URL}?key=${apiKey1}`, {
     method: 'POST',
     headers: {
@@ -113,21 +108,16 @@ function detectImageMimeType(base64String) {
     body: JSON.stringify(body)
   });
   if (!response.ok) {
-    const text = await response.text();
-    console.error(`[upload-and-ocr] ❌ Gemini generate failed | status=${response.status} body=${text}`);
-    throw new Error(`Gemini'ye sorulamadı: ${text}`);
+    const error = await response.json();
+    throw new Error(`Gemini'ye sorulamadı: ${JSON.stringify(error)}`);
   }
   const result = await response.json();
-  const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
-  console.log(`[upload-and-ocr] ✅ Gemini generate ok | tookMs=${Date.now() - tGen} textLen=${textResponse?.length}`);
+  const textResponse = result.candidates[0].content.parts[0].text;
   return textResponse;
 }
 // OCR çıktısındaki görsel satır sonlarını temizle, paragrafları koru
 function normalizeOcrText(raw) {
-  if (!raw) {
-    console.log('[upload-and-ocr] ℹ️ normalizeOcrText: empty input');
-    return raw;
-  }
+  if (!raw) return raw;
   // Satır sonlarını normalize et
   let t = raw.replace(/\r\n?/g, '\n');
   // Tire veya soft hyphen ile satır sonunda bölünmüş kelimeleri birleştir
@@ -139,7 +129,6 @@ function normalizeOcrText(raw) {
   }).join('\n\n');
   // Aşırı boşlukları toparla ve üçten fazla yeni satırı azalt
   t = t.replace(/[\t ]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
-  console.log(`[upload-and-ocr] ℹ️ normalizeOcrText: inLen=${raw.length} outLen=${t.length}`);
   return t;
 }
 serve(async (req)=>{
@@ -149,13 +138,9 @@ serve(async (req)=>{
       headers: corsHeaders
     });
   }
-  const reqStart = Date.now();
-  const authHeader = req.headers.get('Authorization');
-  console.log(`[upload-and-ocr] ▶️ Request start | method=${req.method} url=${req.url} contentType=${req.headers.get('content-type')} authHdrLen=${authHeader ? authHeader.length : 0}`);
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  console.log(`[upload-and-ocr] ℹ️ Env presence | SUPABASE_URL=${!!supabaseUrl} ANON_KEY=${supabaseAnonKey ? 'set' : 'missing'} SERVICE_ROLE_KEY=${supabaseServiceRoleKey ? 'set' : 'missing'}`);
   // kullanıcı context'i için  anon client
   const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
     global: {
@@ -164,33 +149,17 @@ serve(async (req)=>{
       }
     }
   });
-  console.log('[upload-and-ocr] ℹ️ Supabase anon client initialized');
-  let image_base64: string | undefined;
-  let quote_id: string | undefined;
-  try {
-    const body = await req.json();
-    image_base64 = body?.image_base64;
-    quote_id = body?.quote_id;
-    console.log(`[upload-and-ocr] ℹ️ Body parsed | imageLen=${image_base64?.length} quoteId=${quote_id}`);
-  } catch (parseErr) {
-    console.error('[upload-and-ocr] ❌ Body parse failed', parseErr);
-    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
-  }
+  const { image_base64, quote_id } = await req.json();
   const { data: { user } } = await supabaseClient.auth.getUser();
-  console.log(`[upload-and-ocr] ℹ️ Auth getUser | userId=${user?.id ?? 'none'}`);
   let ocrText;
   async function upsertQuote(status) {
     try {
-      console.log(`[upload-and-ocr] 🟡 upsertQuote | status=${status} contentLen=${ocrText?.length} quoteId=${quote_id}`);
       const { error } = await supabaseClient.from('quotes').update({
         content: ocrText ?? null,
         status
       }).eq('id', quote_id);
       if (error) {
         console.error('[upload-and-ocr] ❌ Update error for user:', user?.id, error);
-      }
-      else {
-        console.log(`[upload-and-ocr] ✅ upsertQuote ok | status=${status} quoteId=${quote_id}`);
       }
     } catch (e) {
       console.error('[upload-and-ocr] ❌ Update exception for user:', user?.id, e);
@@ -201,10 +170,8 @@ serve(async (req)=>{
     // Supabase istemcileri (anon ve admin)
     // round-robin için admin client (sequence/RPC)
     const adminClient = supabaseServiceRoleKey ? createClient(supabaseUrl, supabaseServiceRoleKey) : null;
-    console.log(`[upload-and-ocr] ℹ️ Admin client ${adminClient ? 'initialized' : 'not-initialized'}`);
     // Kullanıcıyı token'dan al
     if (!user) {
-      console.warn('[upload-and-ocr] ⚠️ Unauthorized request (no user)');
       return new Response(JSON.stringify({
         error: 'Unauthorized'
       }), {
@@ -216,7 +183,6 @@ serve(async (req)=>{
       });
     }
     if (!image_base64) {
-      console.warn('[upload-and-ocr] ⚠️ Missing image_base64');
       return new Response(JSON.stringify({
         error: 'Missing required field: image_base64'
       }), {
@@ -245,7 +211,6 @@ serve(async (req)=>{
       return keys;
     }
     const geminiKeys = loadGeminiKeys();
-    console.log(`[upload-and-ocr] ℹ️ Gemini keys loaded | count=${geminiKeys.length}`);
     if (geminiKeys.length === 0) {
       return new Response(JSON.stringify({
         error: "Gemini anahtarı bulunamadı. Lütfen GEMINI_API_KEY veya GEMINI_KEY_COUNT + GEMINI_KEY_i secrets ayarlayın."
@@ -266,7 +231,6 @@ serve(async (req)=>{
       // adminClient yoksa stateless fallback: zamanı bazlı basit rr (tam garanti değil)
       if (!adminClient) {
         const idx = Math.floor(Date.now() / 1000 % geminiKeys.length);
-        console.log(`[upload-and-ocr] ℹ️ Gemini key pick | strategy=stateless-time idx=${idx}`);
         return {
           key: geminiKeys[idx],
           index: idx
@@ -278,14 +242,12 @@ serve(async (req)=>{
       if (error || typeof data !== 'number') {
         // fallback: zaman bazlı
         const idx = Math.floor(Date.now() / 1000 % geminiKeys.length);
-        console.warn(`[upload-and-ocr] ⚠️ Gemini key pick RPC fallback | err=${error?.message} idx=${idx}`);
         return {
           key: geminiKeys[idx],
           index: idx
         };
       }
       const idx = data % geminiKeys.length;
-      console.log(`[upload-and-ocr] ℹ️ Gemini key pick | strategy=rpc idx=${idx}`);
       return {
         key: geminiKeys[idx],
         index: idx
@@ -294,15 +256,12 @@ serve(async (req)=>{
     // Gemini ile OCR işlemi yap (Files API kullanarak)
     try {
       const { key: selectedKey, index: rrIndex } = await pickGeminiKey();
-      console.log(`[upload-and-ocr] 🟡 OCR flow start | rrIndex=${rrIndex} user=${user?.id}`);
       // Güvenli log: anahtarı asla loglama
       const prompt = promptText;
       const mimeType = detectImageMimeType(image_base64);
-      console.log(`[upload-and-ocr] ℹ️ Detected mime | mime=${mimeType}`);
       // Önce dosyayı Files API'ye yükle
       const tUploadStart = Date.now();
       const uploadedFile = await uploadFileToGemini(image_base64, mimeType, selectedKey);
-      console.log(`[upload-and-ocr] ✅ Upload completed | tookMs=${Date.now() - tUploadStart} file=${uploadedFile?.name}`);
       // Sonra yüklenen dosya ile Gemini'ye soru sor
       const tGenStart = Date.now();
       // AbortSignal için manuel kontrol implementasyonu
@@ -319,26 +278,24 @@ serve(async (req)=>{
           timeoutPromise
         ]);
         if (timeoutId) clearTimeout(timeoutId);
-        console.log(`[upload-and-ocr] ✅ Gemini responded | tookMs=${Date.now() - tGenStart} textLen=${ocrText?.length}`);
       } catch (error) {
         if (timeoutId) clearTimeout(timeoutId);
         if (error.message === 'AbortError') {
           await upsertQuote('failed');
           throw new Error('Function timed out');
         }
-        console.error('[upload-and-ocr] ❌ Gemini promise failed', error);
         throw error;
       }
       // Normalize et (satır sonu kırılmalarını düzelt, paragrafları koru)
       ocrText = normalizeOcrText(ocrText);
-      console.log(`[upload-and-ocr] ℹ️ Post-normalize | textLen=${ocrText?.length} totalMs=${Date.now() - t0}`);
+      console.log(`Gemini responded in ${Date.now() - tGenStart}ms (total ${Date.now() - t0}ms) behalf of user ${user?.id}`);
       if (!ocrText || ocrText.trim() === "") {
         await upsertQuote('failed');
         throw new Error("Gemini boş veya geçersiz bir yanıt döndürdü.");
       }
     } catch (error) {
       await upsertQuote('failed');
-      console.error("[upload-and-ocr] ❌ Gemini OCR failed for user", user?.id, error?.stack || error);
+      console.error("Gemini OCR failed for user", user?.id, error);
       return new Response(JSON.stringify({
         error: `Gemini OCR işlemi başarısız oldu: ${error.message}`
       }), {
@@ -353,7 +310,6 @@ serve(async (req)=>{
     const isUnreadable = ocrText?.trim().startsWith('UNREADABLE_TEXT') ?? false;
     if (isUnreadable) {
       await upsertQuote('unreadable');
-      console.log('[upload-and-ocr] ✅ OCR unreadable path | returning 200');
       return new Response(JSON.stringify({
         success: true,
         ocrText,
@@ -370,7 +326,6 @@ serve(async (req)=>{
     // Okunabilir başarı: pending_selection
     await upsertQuote('pending_selection');
     // Başarılı yanıt döndür (OCR sonucu + varsa quoteId)
-    console.log('[upload-and-ocr] ✅ OCR success path | returning 200');
     return new Response(JSON.stringify({
       success: true,
       ocrText,
@@ -387,7 +342,6 @@ serve(async (req)=>{
     // AbortError özel durumu
     if (e?.name === 'AbortError') {
       await upsertQuote('failed');
-      console.warn('[upload-and-ocr] ⏱️ Function timed out | returning 408');
       return new Response(JSON.stringify({
         error: 'Function timed out'
       }), {
@@ -399,7 +353,7 @@ serve(async (req)=>{
       });
     }
     await upsertQuote('failed');
-    console.error('[upload-and-ocr] ❌ Other error for user', user?.id, e?.stack || e);
+    console.error('Other error for user', user?.id, e);
     return new Response(JSON.stringify({
       error: e?.message ?? String(e)
     }), {
@@ -410,8 +364,4 @@ serve(async (req)=>{
       status: 500
     });
   }
-  finally {
-    console.log(`[upload-and-ocr] ⏹️ Request end | tookMs=${Date.now() - reqStart}`);
-  }
 });
-

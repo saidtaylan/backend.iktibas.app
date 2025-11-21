@@ -1,1 +1,3 @@
 volumes/db/data
+.env
+.env.functions
