@@ -1,0 +1,94 @@
+MIT License
+
+Copyright (c) 2025 İktibas App
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## Additional Terms for Fork Usage
+
+This repository is designed to be forked and customized for your own deployment.
+When forking this repository, you are encouraged to:
+
+✅ **Allowed:**
+- Fork and use for your own projects
+- Modify and customize for your needs
+- Deploy commercially or non-commercially
+- Distribute modified versions
+- Use in private or public projects
+
+⚠️ **Please:**
+- Keep this license file in your fork
+- Give credit by linking back to the original repository (optional but appreciated)
+- Star the original repository if you find it useful 🌟
+
+🚫 **Not Required:**
+- No attribution required in your deployed application
+- No requirement to share your modifications
+- No restriction on commercial use
+
+---
+
+## Third-Party Software
+
+This project includes or depends on the following open-source software:
+
+- **Supabase** - Apache License 2.0 (https://github.com/supabase/supabase)
+- **Docker** - Apache License 2.0 (https://www.docker.com/)
+- **Nginx** - BSD 2-Clause License (https://nginx.org/)
+- **PostgreSQL** - PostgreSQL License (https://www.postgresql.org/)
+- **Kong** - Apache License 2.0 (https://konghq.com/)
+
+Each component retains its original license. Please refer to their respective
+repositories for full license details.
+
+---
+
+## Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+
+This deployment script is provided as a convenience tool. The authors and 
+contributors are not responsible for:
+
+- Data loss or corruption
+- Security vulnerabilities in deployed instances
+- Downtime or service interruptions
+- Misconfiguration or deployment issues
+- Any damages resulting from use of this software
+
+**Production Deployment Notice:**
+Users are responsible for:
+- Securing their own infrastructure
+- Managing SSL certificates and renewals
+- Backing up data regularly
+- Monitoring and maintaining their deployment
+- Complying with all applicable laws and regulations
+- Securing sensitive credentials and environment variables
+
+---
+
+## Questions?
+
+For questions about this license or usage permissions:
+- Open an issue: [GitHub Issues](../../issues)
+- Website: https://iktibas.app
+
+**Made with ❤️ by the @saidtaylan**
