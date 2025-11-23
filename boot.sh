@@ -12,13 +12,15 @@ set -euo pipefail
 # =============================================================================
 # Configuration
 # =============================================================================
-readonly BASE_DIRECTORY="/opt/iktibas/backend.iktibas.app"
+readonly BASE_DIRECTORY="/opt/backend.iktibas.app"
 readonly DOMAIN="api.iktibas.app"
 readonly LOG_DIR="/var/log/supabase"
 readonly BACKUP_SCRIPT="$BASE_DIRECTORY/scripts/db-backup.sh"
 readonly CRON_FILE="/etc/cron.d/supabase-db-backup"
 readonly STATE_DIR="/var/lib/supabase-bootstrap"
 readonly STATE_FILE="$STATE_DIR/state"
+readonly SUPABASE_CLI_VERSION="2.60.0"
+readonly SUPABASE_CLI_URL="https://github.com/supabase/cli/releases/download/v${SUPABASE_CLI_VERSION}/supabase_${SUPABASE_CLI_VERSION}_linux_amd64.rpm"
 
 # =============================================================================
 # Logging Functions
@@ -47,11 +49,6 @@ mark_done() {
 is_done() {
     local step="$1"
     grep -qx "$step" "$STATE_FILE" 2>/dev/null
-}
-
-reset_state() {
-    rm -f "$STATE_FILE"
-    log_info "State reset. All steps will run on next execution."
 }
 
 # =============================================================================
@@ -115,8 +112,8 @@ check_certbot_installed() {
 }
 
 check_ssl_certificate() {
-    [[ -d "/etc/letsencrypt/live/$DOMAIN" ]] && \
-    [[ -f "/etc/letsencrypt/options-ssl-nginx.conf" ]]
+    [[ -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]] && \
+    [[ -f "/etc/letsencrypt/live/$DOMAIN/privkey.pem" ]]
 }
 
 check_nginx_configured() {
@@ -131,6 +128,22 @@ check_log_directory() {
 
 check_backup_cron() {
     [[ -f "$CRON_FILE" ]] && grep -q "$BACKUP_SCRIPT" "$CRON_FILE"
+}
+
+check_supabase_cli() {
+    command -v supabase &>/dev/null && [[ "$(supabase --version 2>&1 | grep -oP '\d+\.\d+\.\d+' | head -1)" == "$SUPABASE_CLI_VERSION" ]]
+}
+
+check_docker_compose_file() {
+    [[ -f "$BASE_DIRECTORY/docker-compose.yml" ]] || [[ -f "$BASE_DIRECTORY/compose.yml" ]]
+}
+
+check_docker_compose_running() {
+    cd "$BASE_DIRECTORY" && docker compose ps --quiet 2>/dev/null | grep -q . && cd - >/dev/null
+}
+
+check_env_files() {
+    [[ -f "$BASE_DIRECTORY/.env" ]] && [[ -f "$BASE_DIRECTORY/.env.functions" ]]
 }
 
 # =============================================================================
@@ -359,15 +372,24 @@ step_certbot() {
         log_info "Certbot installed"
     fi
 
-    # Get certificate if needed
+    # Get certificate if needed (certonly - does NOT modify nginx config)
     if check_ssl_certificate; then
         log_skip "SSL certificate for $DOMAIN already exists"
+        log_info "Certificate paths:"
+        log_info "  ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+        log_info "  ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem"
     else
-        log_info "Obtaining SSL certificate for $DOMAIN..."
-        if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email; then
-            log_info "SSL certificate obtained"
+        log_info "Obtaining SSL certificate for $DOMAIN (certonly mode)..."
+        if certbot certonly --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email; then
+            log_info "SSL certificate obtained successfully"
+            log_info ""
+            log_info "Add these lines to your nginx config:"
+            log_info "  ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;"
+            log_info "  ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;"
+            log_info ""
         else
-            log_warn "Certbot failed. Run manually: certbot --nginx -d $DOMAIN"
+            log_warn "Certbot failed. Run manually:"
+            log_warn "  certbot certonly --nginx -d $DOMAIN"
             log_warn "Ensure DNS points to this server and ports 80/443 are open"
         fi
     fi
@@ -375,6 +397,13 @@ step_certbot() {
 
 step_nginx_configure() {
     log_section "Nginx Configuration"
+
+    # Verify SSL certificate exists first
+    if ! check_ssl_certificate; then
+        log_warn "SSL certificate not found, skipping Nginx configuration"
+        log_warn "Run certbot first, then re-run this script"
+        return 0
+    fi
 
     if check_nginx_configured; then
         # Verify config is valid
@@ -403,7 +432,10 @@ step_nginx_configure() {
     log_info "Testing Nginx configuration..."
     if ! nginx -t; then
         log_error "Nginx configuration test failed"
-        log_warn "Fix: Update 'listen 443 ssl http2' to 'listen 443 ssl' + 'http2 on;'"
+        log_warn "Ensure your nginx config includes:"
+        log_warn "  ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;"
+        log_warn "  ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;"
+        log_warn "Also fix: Update 'listen 443 ssl http2' to 'listen 443 ssl' + 'http2 on;'"
         exit 1
     fi
 
@@ -445,6 +477,171 @@ EOF
     log_info "Created backup cron job"
 }
 
+step_supabase_cli() {
+    log_section "Supabase CLI"
+
+    if check_supabase_cli; then
+        log_skip "Supabase CLI v${SUPABASE_CLI_VERSION} already installed"
+        return 0
+    fi
+
+    local rpm_file="/tmp/supabase_${SUPABASE_CLI_VERSION}_linux_amd64.rpm"
+
+    log_info "Downloading Supabase CLI v${SUPABASE_CLI_VERSION}..."
+    if ! wget -q -O "$rpm_file" "$SUPABASE_CLI_URL"; then
+        log_error "Failed to download Supabase CLI"
+        rm -f "$rpm_file"
+        exit 1
+    fi
+
+    log_info "Installing Supabase CLI..."
+    if rpm -i "$rpm_file"; then
+        log_info "Supabase CLI installed successfully"
+        supabase --version
+    else
+        log_error "Failed to install Supabase CLI"
+        rm -f "$rpm_file"
+        exit 1
+    fi
+
+    # Clean up downloaded file
+    rm -f "$rpm_file"
+    log_info "Cleaned up installation file"
+}
+
+step_env_files() {
+    log_section "Environment Files"
+
+    cd "$BASE_DIRECTORY"
+
+    # Check .env
+    if [[ -f ".env" ]]; then
+        log_skip ".env already exists"
+    else
+        if [[ -f ".env.example" ]]; then
+            log_info "Copying .env.example to .env..."
+            cp .env.example .env
+            log_info ".env created from example"
+        else
+            log_error ".env.example not found in $BASE_DIRECTORY"
+            cd - >/dev/null
+            exit 1
+        fi
+    fi
+
+    # Check .env.functions
+    if [[ -f ".env.functions" ]]; then
+        log_skip ".env.functions already exists"
+    else
+        if [[ -f ".env.functions.example" ]]; then
+            log_info "Copying .env.functions.example to .env.functions..."
+            cp .env.functions.example .env.functions
+            log_info ".env.functions created from example"
+        else
+            log_error ".env.functions.example not found in $BASE_DIRECTORY"
+            cd - >/dev/null
+            exit 1
+        fi
+    fi
+
+    cd - >/dev/null
+}
+
+step_docker_compose_up() {
+    log_section "Docker Compose"
+
+    # Check if docker-compose.yml exists
+    if ! check_docker_compose_file; then
+        log_warn "docker-compose.yml not found in $BASE_DIRECTORY"
+        log_warn "Create your docker-compose.yml first, then re-run this script"
+        return 0
+    fi
+
+    # Check environment files
+    if ! check_env_files; then
+        log_error "Environment files not configured"
+        log_error "This should have been handled by step_env_files"
+        exit 1
+    fi
+
+    # Check if already running
+    if check_docker_compose_running; then
+        log_skip "Docker Compose services already running"
+        cd "$BASE_DIRECTORY"
+        docker compose ps
+        cd - >/dev/null
+        return 0
+    fi
+
+    log_info "Starting Docker Compose services..."
+    cd "$BASE_DIRECTORY"
+
+    # Pull latest images first
+    log_info "Pulling Docker images..."
+    if ! docker compose pull; then
+        log_warn "Failed to pull some images, continuing anyway..."
+    fi
+
+    # Start services
+    if docker compose up -d; then
+        log_info "Docker Compose services started successfully"
+        
+        # Show running containers
+        echo ""
+        docker compose ps
+        echo ""
+        
+        log_info "Waiting 60 seconds for services to initialize..."
+        sleep 60
+        
+        # Check health
+        log_info "Service status after startup:"
+        docker compose ps
+    else
+        log_error "Failed to start Docker Compose services"
+        cd - >/dev/null
+        exit 1
+    fi
+
+    cd - >/dev/null
+}
+
+step_health_check() {
+    log_section "Health Check"
+
+    # Check if nginx is serving
+    if ! systemctl is-active nginx &>/dev/null; then
+        log_warn "Nginx is not running, skipping health check"
+        return 0
+    fi
+
+    # Check if SSL certificate exists
+    if ! check_ssl_certificate; then
+        log_warn "SSL certificate not found, skipping HTTPS health check"
+        log_info "Test HTTP: curl -I http://$DOMAIN"
+        return 0
+    fi
+
+    log_info "Testing HTTPS endpoint..."
+    
+    local response
+    if response=$(curl -I -s -w "\nHTTP_CODE:%{http_code}" --max-time 10 "https://$DOMAIN" 2>&1); then
+        local http_code=$(echo "$response" | grep "HTTP_CODE:" | cut -d: -f2)
+        
+        if [[ "$http_code" == "200" ]] || [[ "$http_code" == "301" ]] || [[ "$http_code" == "302" ]]; then
+            log_info "✓ Health check passed (HTTP $http_code)"
+            echo "$response" | grep -v "HTTP_CODE:"
+        else
+            log_warn "Health check returned HTTP $http_code"
+            echo "$response" | grep -v "HTTP_CODE:"
+        fi
+    else
+        log_warn "Health check failed - connection error"
+        log_info "This might be normal if services are still starting"
+        log_info "Manual check: curl -I https://$DOMAIN"
+    fi
+}
+
 # =============================================================================
 # Summary
 # =============================================================================
@@ -458,12 +655,29 @@ print_summary() {
     check_ssl_certificate && echo "  ✓ SSL Certificate" || echo "  ✗ SSL Certificate"
     check_nginx_configured && echo "  ✓ Nginx Configured" || echo "  ○ Nginx Config (pending SSL)"
     check_backup_cron && echo "  ✓ Backup Cron" || echo "  ✗ Backup Cron"
+    check_supabase_cli && echo "  ✓ Supabase CLI v${SUPABASE_CLI_VERSION}" || echo "  ✗ Supabase CLI"
+    check_env_files && echo "  ✓ Environment Files" || echo "  ✗ Environment Files"
+    check_docker_compose_running && echo "  ✓ Docker Compose Running" || echo "  ○ Docker Compose Not Running"
     echo ""
-    echo "Next Steps:"
-    echo "  1. cd $BASE_DIRECTORY && docker compose up -d"
-    echo "  2. Test: curl -I https://$DOMAIN"
+    echo "Useful Commands:"
+    echo "  View Logs:"
+    echo "    • docker compose logs -f              # All services"
+    echo "    • docker compose logs -f postgres     # Specific service"
+    echo "    • journalctl -u nginx -f              # Nginx logs"
+    echo "    • tail -f $LOG_DIR/db-backup.log      # Backup logs"
     echo ""
-    echo "Re-run this script anytime - completed steps will be skipped."
+    echo "  Service Management:"
+    echo "    • docker compose ps                   # Service status"
+    echo "    • docker compose restart <service>    # Restart service"
+    echo "    • docker compose down                 # Stop all"
+    echo "    • docker compose up -d                # Start all"
+    echo ""
+    echo "  Maintenance:"
+    echo "    • certbot renew --dry-run             # Test SSL renewal"
+    echo "    • nginx -t && systemctl reload nginx  # Reload nginx config"
+    echo "    • supabase --help                     # Supabase CLI"
+    echo ""
+    echo "Your API should be available at: https://$DOMAIN"
     echo ""
 }
 
@@ -493,7 +707,6 @@ Safe to run multiple times - completed steps are automatically skipped.
 Options:
   -h, --help      Show this help message
   -s, --status    Show current status only (no changes)
-  --reset         Reset state and run all steps fresh
 
 EOF
 }
@@ -515,6 +728,10 @@ show_status() {
     check_nginx_configured && echo "  ✓ Nginx Configured" || echo "  ○ Nginx Config needed"
     check_log_directory && echo "  ✓ Log Directory" || echo "  ○ Log Directory needed"
     check_backup_cron && echo "  ✓ Backup Cron" || echo "  ○ Backup Cron needed"
+    check_supabase_cli && echo "  ✓ Supabase CLI v${SUPABASE_CLI_VERSION}" || echo "  ○ Supabase CLI needed"
+    check_docker_compose_file && echo "  ✓ Docker Compose File" || echo "  ○ Docker Compose File needed"
+    check_env_files && echo "  ✓ Environment Files" || echo "  ○ Environment Files needed"
+    check_docker_compose_running && echo "  ✓ Docker Compose Running" || echo "  ○ Docker Compose Not Running"
     echo ""
 }
 
@@ -529,11 +746,6 @@ main() {
             show_status
             exit 0
             ;;
-        --reset)
-            check_root
-            reset_state
-            exit 0
-            ;;
     esac
 
     log_section "Supabase Server Bootstrap (Idempotent)"
@@ -546,10 +758,14 @@ main() {
     step_nginx_install
     step_selinux
     step_firewall
-    step_nginx_configure
     step_certbot
+    step_nginx_configure
     step_log_directory
     step_backup_cron
+    step_supabase_cli
+    step_env_files
+    step_docker_compose_up
+    step_health_check
     print_summary
 }
 
