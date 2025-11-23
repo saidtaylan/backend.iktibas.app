@@ -1,0 +1,1 @@
+-- this sql files in this directory will be executed in order when you run `make migrate`
