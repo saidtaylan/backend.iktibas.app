@@ -1,7 +1,7 @@
--- 1. pg_cron extension'ını etkinleştir
+-- 1. Enable pg_cron extension
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 
--- 2. Önce temizleme fonksiyonunu oluşturalım
+-- 2. Create cleanup function
 CREATE OR REPLACE FUNCTION cleanup_old_quotes()
 RETURNS INTEGER
 LANGUAGE plpgsql
@@ -10,31 +10,31 @@ AS $$
 DECLARE
     deleted_count INTEGER;
 BEGIN
-    -- 7 günden eski ve status'u failed veya unreadable olan kayıtları sil
+    -- Delete quotes older than 7 days with status 'failed' or 'unreadable'
     DELETE FROM quotes 
     WHERE created_at < (NOW() - INTERVAL '7 days')
     AND status IN ('failed', 'unreadable');
     
-    -- Silinen kayıt sayısını al
+    -- Get the number of deleted rows
     GET DIAGNOSTICS deleted_count = ROW_COUNT;
     
-    -- Log için bilgi kaydet (opsiyonel)
+    -- Log the deletion (optional)
     INSERT INTO cleanup_logs (function_name, deleted_count, executed_at)
     VALUES ('cleanup_old_quotes', deleted_count, NOW())
-    ON CONFLICT DO NOTHING; -- Eğer cleanup_logs tablosu yoksa hata vermez
+    ON CONFLICT DO NOTHING; -- If cleanup_logs table doesn't exist, it won't throw an error
     
     RETURN deleted_count;
 END;
 $$;
 
--- 3. Fonksiyonu her gece saat 12:00'da çalıştıracak cron job oluştur
+-- 3. Create cron job to run the cleanup function daily at midnight
 SELECT cron.schedule(
     'cleanup-old-quotes',              -- job name
-    '0 0 * * *',                      -- cron expression (her gece 12:00)
-    'SELECT public.cleanup_old_quotes();'  -- çalıştırılacak SQL (şema belirtildi)
+    '0 0 * * *',                      -- cron expression (daily at midnight)
+    'SELECT public.cleanup_old_quotes();'  -- SQL to run (schema specified)
 );
 
--- 4. Opsiyonel: Log tablosu oluşturma (fonksiyonun ne zaman çalıştığını takip etmek için)
+-- 4. Optional: Create log table to track when the function runs
 CREATE TABLE IF NOT EXISTS cleanup_logs (
     id SERIAL PRIMARY KEY,
     function_name VARCHAR(50) NOT NULL,
@@ -42,11 +42,11 @@ CREATE TABLE IF NOT EXISTS cleanup_logs (
     executed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 5. Fonksiyonu manuel test etmek için:
+-- 5. Manually test the function:
 -- SELECT cleanup_old_quotes();
 
--- 6. Cron job'ları listelemek için:
+-- 6. List cron jobs:
 -- SELECT * FROM cron.job;
 
--- 7. Cron job'u silmek için (gerekirse):
+-- 7. Optional: Delete the cron job (if needed):
 -- SELECT cron.unschedule('cleanup-old-quotes');

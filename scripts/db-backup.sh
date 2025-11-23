@@ -1,89 +1,89 @@
 #!/bin/bash
 #
-# Supabase Self-Hosted için Tam PostgreSQL Veritabanı Yedekleme Script'i
-# pg_dumpall kullanarak tüm rolleri, şemaları ve verileri yedekler.
-# Parola ve kullanıcı adını .env dosyasından okur.
+# Complete PostgreSQL Database Backup Script for Self-Hosted Supabase
+# Backs up all roles, schemas, and data using pg_dumpall.
+# Reads password and username from the .env file.
 #
 
-# --- AYARLAR: BU ALANLARI KENDİNİZE GÖRE DÜZENLEYİN ---
+# --- SETTINGS: ADJUST THESE FIELDS ACCORDING TO YOUR SETUP ---
 
-# 1. Supabase projenizin (docker-compose.yml dosyasının olduğu) TAM YOLU
-#    Cron içinde çalışacağı için $(pwd) KULLANMAYIN. Tam yolu yazın.
-#    ÖRNEK: PROJECT_DIR="/opt/iktibas/backend.iktibas.app"
+# 1. FULL PATH to your Supabase project (where docker-compose.yml is)
+#    DO NOT USE $(pwd) as it will run in cron. Write the full path.
+#    EXAMPLE: PROJECT_DIR="/opt/iktibas/backend.iktibas.app"
 PROJECT_DIR="/opt/iktibas/backend.iktibas.app"
 
-# 2. Yedeklerin saklanacağı dizin
-#    Bu dizinin var olduğundan ve yazma izniniz olduğundan emin olun.
-BACKUP_DIR="/opt/iktibas/db-backups"
+# 2. Directory where backups will be stored
+#    Ensure this directory exists and you have write permissions.
+BACKUP_DIR="/opt/db-backups"
 
-# 3. Kaç günlük yedek saklanacak? (Örn: 7 = 7 günden eski yedekleri sil)
+# 3. How many days of backups to keep? (E.g.: 60 = delete backups older than 60 days)
 RETENTION_DAYS=60
 
-# 4. Docker Compose'daki veritabanı servisinizin adı (genellikle 'db' dir)
+# 4. Name of your database service in Docker Compose (usually 'db')
 DB_SERVICE_NAME="db"
 
-# 5. Süper kullanıcınızın adı (NOT: Bu, .env dosyanızdaki POSTGRES_USER ile aynı olmalı)
+# 5. Name of your superuser (NOTE: This should be the same as POSTGRES_USER in your .env file)
 DB_SUPERUSER="supabase_admin"
 
-# --- SCRIPT AYARLARI BİTTİ ---
+# --- SCRIPT SETTINGS END ---
 
-# .env dosyasının tam yolu
+# Full path to the .env file
 ENV_FILE="$PROJECT_DIR/.env"
 
-# Hata kontrolü için
+# For error checking
 set -o pipefail
 
-# --- .env DOSYASINI KONTROL ET VE OKU ---
+# --- CHECK AND READ THE .env FILE ---
 
 if [ ! -f "$ENV_FILE" ]; then
-    echo "$(date): HATA: .env dosyası bulunamadı: $ENV_FILE"
+    echo "$(date): ERROR: .env file not found: $ENV_FILE"
     exit 1
 fi
 
-# .env dosyasından POSTGRES_PASSWORD'u oku
-# (Windows satır sonlarını (\r) temizlemek için tr -d '\r' eklendi)
+# Read POSTGRES_PASSWORD from the .env file
+# (tr -d '\r' added to clean up Windows line endings (\r))
 DB_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' "$ENV_FILE" | cut -d '=' -f2- | tr -d '\r')
 
 if [ -z "$DB_PASSWORD" ]; then
-    echo "$(date): HATA: .env dosyasında POSTGRES_PASSWORD bulunamadı."
+    echo "$(date): ERROR: POSTGRES_PASSWORD not found in .env file."
     exit 1
 fi
 
-# --- YEDEKLEME İŞLEMİ ---
+# --- BACKUP PROCESS ---
 
-# Yedek dizininin var olduğundan emin ol
+# Ensure the backup directory exists
 mkdir -p $BACKUP_DIR
 
-# Dosya adı (Örn: supabase_backup_2025-11-03_2115.sql.gz)
+# File name (E.g.: supabase_backup_2025-11-03_2115.sql.gz)
 FILENAME="supabase_backup_$(date +%Y-%m-%d_%H%M).sql.gz"
 BACKUP_FILE_PATH="$BACKUP_DIR/$FILENAME"
 
-echo "$(date): Yedekleme başlıyor: $FILENAME"
+echo "$(date): Backup starting: $FILENAME"
 
-# docker compose exec komutunu PGPASSWORD ve PGUSER değişkenleriyle çalıştır
-# -T bayrağı, cron içinde çalışabilmesi için terminal ayırmaz
-# PGPASSWORD ve PGUSER, konteyner İÇİNDEKİ pg_dumpall komutu tarafından okunur
+# Execute docker compose exec command with PGPASSWORD and PGUSER variables
+# -T flag prevents terminal allocation so it can run inside cron
+# PGPASSWORD and PGUSER are read by the pg_dumpall command INSIDE the container
 docker compose -f "$PROJECT_DIR/docker-compose.yml" exec -T \
   -e PGPASSWORD="$DB_PASSWORD" \
   -e PGUSER="$DB_SUPERUSER" \
   $DB_SERVICE_NAME \
   pg_dumpall | gzip > $BACKUP_FILE_PATH
 
-# Komutun başarı durumunu kontrol et
+# Check command success status
 if [ $? -eq 0 ]; then
-  echo "$(date): Başarılı: Yedekleme tamamlandı ve şuraya kaydedildi: $BACKUP_FILE_PATH"
+  echo "$(date): Success: Backup completed and saved to: $BACKUP_FILE_PATH"
 else
-  echo "$(date): HATA: Yedekleme sırasında bir sorun oluştu."
-  rm -f $BACKUP_FILE_PATH # Başarısız olduysa boş dosyayı sil
+  echo "$(date): ERROR: An issue occurred during backup."
+  rm -f $BACKUP_FILE_PATH # Delete the empty file if it failed
   exit 1
 fi
 
-# --- TEMİZLİK İŞLEMİ ---
+# --- CLEANUP PROCESS ---
 
-echo "$(date): Eski yedekler temizleniyor (Retention: $RETENTION_DAYS gün)..."
+echo "$(date): Cleaning up old backups (Retention: $RETENTION_DAYS days)..."
 find $BACKUP_DIR -name "supabase_backup_*.sql.gz" -mtime +$RETENTION_DAYS -exec rm {} \;
 
-echo "$(date): Temizlik tamamlandı."
+echo "$(date): Cleanup complete."
 echo "---"
 
 exit 0

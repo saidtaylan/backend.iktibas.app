@@ -18,13 +18,11 @@ interface DeleteUserResponse {
 }
 
 serve(async (req: Request): Promise<Response> => {
-  // CORS preflight isteği
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Yalnızca POST metoduna izin ver
     if (req.method !== "POST") {
       return new Response(
         JSON.stringify({ 
@@ -38,7 +36,6 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Authorization header kontrolü
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -53,15 +50,12 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // JWT token'ı çıkar
     const jwt = authHeader.replace("Bearer ", "");
 
-    // Normal client ile kullanıcı doğrulama
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
-    // Kullanıcıyı doğrula
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(jwt);
     if (authError || !user) {
       return new Response(
@@ -76,7 +70,6 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Request body'yi parse et
     let requestData: DeleteUserRequest = {};
     try {
       const body = await req.text();
@@ -96,10 +89,9 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Silinecek kullanıcı ID'si - request'ten gelen ya da mevcut kullanıcı
     const userIdToDelete = requestData.userId || user.id;
 
-    // Güvenlik: Kullanıcı yalnızca kendi hesabını silebilir (admin değilse)
+    // Security: User can only delete their own account (not admin)
     if (userIdToDelete !== user.id) {
       return new Response(
         JSON.stringify({ 
@@ -113,7 +105,6 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Service role key ile admin client oluştur
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!serviceRoleKey) {
       console.error("Service role key not found in environment");
@@ -136,7 +127,7 @@ serve(async (req: Request): Promise<Response> => {
       }
     });
 
-    // Profile verilerini kontrol et (hata olsa da devam et)
+    // Check if profile exists
     let profileExists = false;
     try {
       const { data: profileData, error: profileCheckError } = await supabaseAdmin
@@ -158,9 +149,9 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     try {
-      // 1. Adım: İlgili verileri sil (cascade olmayacak şekilde)
+      // Step 1: Delete related data (not cascading)
       
-      // ReadSpaces'leri sil (kullanıcının sahip olduğu)
+      // Delete ReadSpaces (user's own)
       const { error: readSpacesError } = await supabaseAdmin
         .from('readspaces')
         .delete()
@@ -171,7 +162,7 @@ serve(async (req: Request): Promise<Response> => {
         throw new Error("Failed to delete user readspaces");
       }
 
-      // 2. Adım: Profili sil (eğer varsa)
+      // Step 2: Delete profile if exists
       if (profileExists) {
         const { error: profileError } = await supabaseAdmin
           .from('profiles')
@@ -187,7 +178,7 @@ serve(async (req: Request): Promise<Response> => {
         console.log("No profile to delete");
       }
 
-      // 3. Adım: Auth user'ını sil
+      // Step 3: Delete Auth user
       const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(userIdToDelete);
       
       if (authDeleteError) {
@@ -210,8 +201,8 @@ serve(async (req: Request): Promise<Response> => {
     } catch (deletionError) {
       console.error("User deletion failed:", deletionError);
       
-      // Hata durumunda geri alma işlemi yapılamaz (transaction olmadığı için)
-      // Bu yüzden silme işlemlerini dikkatli sıraladık
+      // In case of error, rollback cannot be performed (no transaction)
+      // So we carefully ordered the deletion operations
       
       return new Response(
         JSON.stringify({ 

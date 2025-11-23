@@ -17,7 +17,7 @@ INSERT INTO public.app_versions (
   false,
   true,
   NOW(),
-  'İlk sürüm yayınlandı',
+  'The first version of the app',
   'https://apps.apple.com/app/your-app-id'
 );
 INSERT INTO public.app_versions (
@@ -38,7 +38,7 @@ INSERT INTO public.app_versions (
   false,
   true,
   NOW(),
-  'İlk sürüm yayınlandı',
+  'The first version of the app',
   'https://apps.apple.com/app/your-app-id'
 );
 -- APP VERSIONS END --

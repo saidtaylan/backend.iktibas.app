@@ -1,3 +1,5 @@
 volumes/db/data
 .env
 .env.functions
+.vscode/
+supabase/.temp
