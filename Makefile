@@ -1,3 +1,5 @@
+.PHONY: migration-deploy migration-new migration-down
+
 # ----------------------------------------------------
 # Configuration
 # ----------------------------------------------------
@@ -16,26 +18,35 @@ DB_URL = postgres://postgres:$(DB_PASSWORD)@$(DB_IP)/postgres?sslmode=disable
 # Validations
 # ----------------------------------------------------
 check-env:
-	@if [ ! -f "$(ENV_FILE)" ]; then \
-		echo "[ERROR] $(ENV_FILE) bulunamadı."; \
-		exit 1; \
-	fi
-	@if [ -z "$(DB_PASSWORD)" ]; then \
-		echo "[ERROR] POSTGRES_PASSWORD değeri $(ENV_FILE) içinde bulunamadı."; \
-		exit 1; \
-	fi
+        @if [ ! -f "$(ENV_FILE)" ]; then \
+                echo "[ERROR] $(ENV_FILE) file couldn't found"; \
+                exit 1; \
+        fi
+        @if [ -z "$(DB_PASSWORD)" ]; then \
+                echo "[ERROR] POSTGRES_PASSWORD couldn't found in the $(ENV_FILE) file"; \
+                exit 1; \
+        fi
 
 check-ip:
-	@if [ -z "$(DB_IP)" ]; then \
-		echo "[ERROR] Container IP alınamadı."; \
-		exit 1; \
-	fi
+        @if [ -z "$(DB_IP)" ]; then \
+                echo "[ERROR] Couldn't got the container IP address"; \
+                exit 1; \
+        fi
 
 # ----------------------------------------------------
 # Targets
-# ----------------------------------------------------
-migrate: check-env check-ip
-	@echo "[INFO] Container IP     : $(DB_IP)"
-	@echo "[INFO] DB Password      : ******"
-	@supabase migration up --db-url "$(DB_URL)" --debug
+# ---------------------------------------------------
+#
+migration-deploy: check-env check-ip
+        @supabase db push --db-url "$(DB_URL)" --debug
 
+migration-down: check-env check-ip
+        @supabase migration down --db-url "$(DB_URL)" --debug
+
+migration-new: check-env check-ip
+        @if [ -z "$(NAME)" ]; then \
+            echo "ERROR: You must specify a migration name."; \
+            exit 1; \
+        fi
+        @echo "Executing: supabase migration new $(NAME)"
+        @supabase migration new $(NAME)  --debug
